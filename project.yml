@@ -36,6 +36,9 @@ targets:
         CFBundleDisplayName: Anthology
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
+        # Standard URLSession TLS is exempt from export compliance review;
+        # this skips ASC's compliance question on every upload.
+        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen:
           UIColorName: AccentColor
         UISupportedInterfaceOrientations:
@@ -65,7 +68,13 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         ENABLE_PREVIEWS: YES
-        CODE_SIGN_ENTITLEMENTS: Anthology/Anthology.entitlements
+      configs:
+        Debug:
+          # Xcode-direct dev builds → APNs sandbox (matches PushManager #if DEBUG).
+          CODE_SIGN_ENTITLEMENTS: Anthology/Anthology.Debug.entitlements
+        Release:
+          # TestFlight / App Store builds → APNs production.
+          CODE_SIGN_ENTITLEMENTS: Anthology/Anthology.Release.entitlements
     dependencies:
       - package: SwiftTerm
         product: SwiftTerm
