@@ -405,4 +405,6 @@ For TestFlight / App Store distribution: open in Xcode → set destination to **
 
 ## License
 
-Copyright © 2026 Michael Lomuscio. All rights reserved. Distributed privately to invited collaborators.
+Licensed under the [Apache License, Version 2.0](LICENSE).
+
+Copyright © 2026 Michael Lomuscio · Lomuscio Labs. See [NOTICE](NOTICE) for attribution requirements.
