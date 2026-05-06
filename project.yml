@@ -11,10 +11,15 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    DEVELOPMENT_TEAM: C9562TBW66
     CODE_SIGN_STYLE: Automatic
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     GENERATE_INFOPLIST_FILE: NO
+
+# Per-target xcconfig that pulls DEVELOPMENT_TEAM (and any other personal
+# overrides) from a gitignored `local.xcconfig`. See local.xcconfig.example.
+configFiles:
+  Debug: local.xcconfig
+  Release: local.xcconfig
 
 packages:
   SwiftTerm:

@@ -14,3 +14,6 @@ Package.resolved
 
 # macOS
 .DS_Store
+
+# Personal Xcode build overrides (team ID, etc.) — copy from local.xcconfig.example
+local.xcconfig

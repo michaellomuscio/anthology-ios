@@ -41,7 +41,7 @@ This README is the **complete setup walkthrough**. If you've already paired and 
 |---|---|
 | **Mac** | running Anthology v0.3.0+ ([download](https://github.com/michaellomuscio/anthology/releases/latest)). The Mac app hosts the bridge the iPhone connects to. |
 | **iPhone** | iOS 17 or newer. iPad works too. |
-| **Apple ID** | the same one used to sign Anthology on the Mac (drlomuscio@icloud.com in this case). Required for TestFlight installs. |
+| **Apple ID** | the one signed in to Xcode + the one your TestFlight invitations are sent to. Required for TestFlight installs. |
 | **Tailscale** *(optional but recommended)* | for use away from your home Wi-Fi. Free, P2P, encrypted with WireGuard. Install the [Tailscale](https://apps.apple.com/us/app/tailscale/id1470499037) app on both Mac and iPhone, sign in with the same account, and Anthology Just Works from anywhere. |
 | **Cloudflare account** *(optional)* | only if you want push notifications when the iOS app is closed. Setup is documented in [`anthology/docs/SETUP_PUSH.md`](https://github.com/michaellomuscio/anthology/blob/main/docs/SETUP_PUSH.md). |
 
@@ -138,7 +138,7 @@ You should now see something like:
 </p>
 
 Things to verify:
-- The title bar shows your **Mac's hostname** (e.g. *Michaels-MacBook-Air*)
+- The title bar shows your **Mac's hostname**
 - A green dot + "Connected" appear at the top
 - Your existing Mac sessions appear as rows
 

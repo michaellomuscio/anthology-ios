@@ -1,0 +1,12 @@
+// Local Xcode build settings — copy this file to `local.xcconfig` and fill in.
+// `local.xcconfig` is gitignored so your team-specific values don't leak into
+// the public repo.
+
+// Your Apple Developer Team ID (10 chars). Required to sign for a real device
+// or upload to TestFlight. Find at https://developer.apple.com/account → Membership.
+DEVELOPMENT_TEAM =
+
+// Optional override of the bundle identifier. Apple bundle ids are globally
+// unique; if `com.lomusciolabs.anthology-ios` is taken in your developer
+// account, set your own here (e.g. com.yourorg.anthology-ios).
+// PRODUCT_BUNDLE_IDENTIFIER = com.yourorg.anthology-ios
