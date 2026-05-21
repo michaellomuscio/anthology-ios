@@ -99,9 +99,13 @@ struct TerminalContainerView: UIViewRepresentable {
         }
 
         func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {
-            MainActor.assumeIsolated {
-                store.resize(sessionId: sessionId, cols: newCols, rows: newRows)
-            }
+            // Intentionally NOT calling store.resize. The Mac renderer is the
+            // authoritative source of PTY dimensions — when iOS also resized,
+            // the PTY size bounced between the two and Claude's TUI tables /
+            // box-drawing lines redrew mid-stream at different widths, leaving
+            // both views looking mangled. iOS now displays whatever the Mac
+            // set; SwiftTerm handles soft-wrapping of lines wider than the
+            // visible area.
         }
 
         func setTerminalTitle(source: TerminalView, title: String) { /* ignore */ }
