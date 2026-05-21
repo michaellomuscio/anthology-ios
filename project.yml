@@ -39,8 +39,8 @@ targets:
       path: Anthology/Info.plist
       properties:
         CFBundleDisplayName: Anthology
-        CFBundleShortVersionString: "0.6.1"
-        CFBundleVersion: "7"
+        CFBundleShortVersionString: "0.6.2"
+        CFBundleVersion: "8"
         # Standard URLSession TLS is exempt from export compliance review;
         # this skips ASC's compliance question on every upload.
         ITSAppUsesNonExemptEncryption: false
