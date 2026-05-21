@@ -260,7 +260,11 @@ final class BridgeStore: ObservableObject {
     func kill(sessionId: String) async {
         guard let c = client else { return }
         _ = try? await c.send(type: "kill", payload: ["sessionId": .init(sessionId)])
-        await refreshSessions()
+        // Optimistic local drop — the server also broadcasts session_killed
+        // which our handler picks up, but doing it here removes the row
+        // instantly without waiting for the round-trip.
+        sessions.removeAll { $0.id == sessionId }
+        sessionStatus[sessionId] = nil
     }
 
     func upsertSchedule(_ s: Schedule) async -> Schedule? {
@@ -398,11 +402,14 @@ final class BridgeStore: ObservableObject {
             // adding sound here would feel chatty.
             HapticManager.shared.light()
         case .sessionKilled(let id):
-            if let i = sessions.firstIndex(where: { $0.id == id }) {
-                sessions[i].alive = false
-                sessions[i].status = .dead
-            }
-            sessionStatus[id] = .dead
+            // Remove from the visible list entirely. Mac semantics for kill
+            // were "leave a dead row so the user can restart from the terminal
+            // banner" — but the phone has no restart UI, so the user
+            // reasonably expects "kill = gone." Matches the renderer's own
+            // handleKill which also filters the session out of state.
+            sessions.removeAll { $0.id == id }
+            sessionStatus[id] = nil
+            sessionData[id] = nil
         case .sessionMeta(let s):
             if let i = sessions.firstIndex(where: { $0.id == s.id }) {
                 sessions[i] = s
