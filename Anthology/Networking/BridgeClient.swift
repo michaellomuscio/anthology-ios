@@ -98,7 +98,11 @@ final class BridgeClient: @unchecked Sendable {
         guard !explicitlyDisconnected else { return }
         updateState(.connecting)
         guard var comps = URLComponents() as URLComponents? else { return }
-        comps.scheme = "ws"
+        // Port 443 means the bridge is exposed via Cloudflare Tunnel (or any
+        // HTTPS-terminating proxy) and we MUST dial wss. Port 80 is plaintext
+        // HTTP/ws — anything else is the Mac's direct bridge port (17872) and
+        // also plain ws.
+        comps.scheme = (server.port == 443) ? "wss" : "ws"
         comps.host = server.host
         comps.port = server.port
         comps.path = "/ws"
