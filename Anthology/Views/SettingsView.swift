@@ -8,6 +8,19 @@ struct SettingsView: View {
     @AppStorage(HapticManager.userDefaultsKey) private var hapticsEnabled: Bool = true
     @AppStorage(SoundManager.userDefaultsKey) private var soundEnabled: Bool = false
 
+    private func runHapticDiagnostic() {
+        // Fire every flavor on a 250ms cadence so the user can feel each one
+        // distinctly. If they feel nothing, the problem is below our layer.
+        HapticManager.shared.prepare()
+        let h = HapticManager.shared
+        h.heavy()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { h.medium() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.50) { h.light() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.80) { h.success() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.10) { h.warning() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.45) { h.error() }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -56,7 +69,7 @@ struct SettingsView: View {
                         Label("Haptic feedback", systemImage: "iphone.gen3.radiowaves.left.and.right")
                     }
                     .onChange(of: hapticsEnabled) { _, on in
-                        if on { HapticManager.shared.success() }
+                        if on { HapticManager.shared.heavy() }
                     }
                     Toggle(isOn: $soundEnabled) {
                         Label("Sound effects", systemImage: "speaker.wave.2")
@@ -64,10 +77,21 @@ struct SettingsView: View {
                     .onChange(of: soundEnabled) { _, on in
                         if on { SoundManager.shared.previewWaiting() }
                     }
+
+                    // Diagnostic — fires every haptic flavor in sequence so the user
+                    // can verify their device actually produces haptics for this app.
+                    // If THIS does nothing, the issue is iOS-level (System Haptics
+                    // turned off in Settings → Sounds & Haptics, or Low Power Mode).
+                    Button {
+                        runHapticDiagnostic()
+                    } label: {
+                        Label("Test haptics", systemImage: "waveform.path")
+                    }
+                    .disabled(!hapticsEnabled)
                 } header: {
                     Text("Feedback")
                 } footer: {
-                    Text("Haptics buzz when a session changes state (e.g. waiting for permission, task done). Sounds layer a brief system tone on top of the haptic — silenced by your ringer switch.")
+                    Text("Haptics fire when a session changes state (waiting / idle / error). If Test haptics does nothing, open iOS Settings → Sounds & Haptics and make sure System Haptics is on, and that Low Power Mode is off. Sounds layer a brief system tone on top — silenced by your ringer switch.")
                 }
 
                 Section("About") {

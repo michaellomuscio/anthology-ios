@@ -30,7 +30,9 @@ struct SessionListView: View {
         Binding(
             get: { SessionsTab(rawValue: tabRaw) ?? .list },
             set: {
-                if tabRaw != $0.rawValue { HapticManager.shared.selection() }
+                // Light impact rather than selection — selection is so subtle on
+                // newer Taptic Engines that it can be missed entirely.
+                if tabRaw != $0.rawValue { HapticManager.shared.light() }
                 tabRaw = $0.rawValue
             }
         )
