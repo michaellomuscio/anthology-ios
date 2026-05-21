@@ -60,6 +60,7 @@ struct SessionDetailView: View {
         }
         .alert("Kill session?", isPresented: $confirmingKill) {
             Button("Kill", role: .destructive) {
+                HapticManager.shared.heavy()
                 killing = true
                 Task {
                     await store.kill(sessionId: session.id)

@@ -30,6 +30,9 @@ struct AnthologyApp: App {
                     // user doesn't have to delete + re-pair just to come back online.
                     if newPhase == .active {
                         Task { await store.reconnectIfNeeded() }
+                        // Warm the haptic generators so the first transition feels
+                        // crisp instead of laggy.
+                        HapticManager.shared.prepare()
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: NotificationDelegate.didTapNotification)) { note in

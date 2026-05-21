@@ -294,6 +294,10 @@ final class BridgeStore: ObservableObject {
             pairedAt: Date().timeIntervalSince1970
         )
         ServerStore.upsert(handle)
+        // Pairing is a milestone moment — the user just successfully linked a
+        // device. Buzz + chime to confirm the action landed.
+        HapticManager.shared.success()
+        SoundManager.shared.success()
         await connect(to: handle)
     }
 
@@ -309,21 +313,33 @@ final class BridgeStore: ObservableObject {
                 ? String(appended.suffix(1_000_000))
                 : appended
         case .sessionStatus(let id, let status):
+            let prev = sessionStatus[id]
             sessionStatus[id] = status
             if let i = sessions.firstIndex(where: { $0.id == id }) {
                 sessions[i].status = status
             }
+            // Fire haptic + sound on real transitions only (server re-emits the
+            // same status often during heavy output).
+            HapticManager.shared.sessionStatusTransition(from: prev, to: status)
+            SoundManager.shared.sessionStatusTransition(from: prev, to: status)
         case .sessionExit(let id, _, _):
+            let prev = sessionStatus[id]
             if let i = sessions.firstIndex(where: { $0.id == id }) {
                 sessions[i].alive = false
                 sessions[i].status = .dead
             }
             sessionStatus[id] = .dead
+            HapticManager.shared.sessionStatusTransition(from: prev, to: .dead)
+            SoundManager.shared.sessionStatusTransition(from: prev, to: .dead)
         case .sessionCreated(let s):
             if !sessions.contains(where: { $0.id == s.id }) {
                 sessions.append(s)
             }
             sessionStatus[s.id] = s.status
+            // Light tap when a new session pops in (often PM-driven). No sound —
+            // session-spawn is a frequent event during PM coordination and
+            // adding sound here would feel chatty.
+            HapticManager.shared.light()
         case .sessionKilled(let id):
             if let i = sessions.firstIndex(where: { $0.id == id }) {
                 sessions[i].alive = false

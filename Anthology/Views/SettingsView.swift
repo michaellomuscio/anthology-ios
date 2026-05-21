@@ -5,6 +5,8 @@ struct SettingsView: View {
     @EnvironmentObject var push: PushManager
     @Environment(\.dismiss) private var dismiss
     @State private var confirmingDisconnect = false
+    @AppStorage(HapticManager.userDefaultsKey) private var hapticsEnabled: Bool = true
+    @AppStorage(SoundManager.userDefaultsKey) private var soundEnabled: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -47,6 +49,25 @@ struct SettingsView: View {
                     Text("Push notifications")
                 } footer: {
                     Text("Wakes the phone when a session goes waiting/error while this app is closed. Requires the Mac to have a Cloudflare Worker URL + secret configured (see anthology-push-worker/README.md).")
+                }
+
+                Section {
+                    Toggle(isOn: $hapticsEnabled) {
+                        Label("Haptic feedback", systemImage: "iphone.gen3.radiowaves.left.and.right")
+                    }
+                    .onChange(of: hapticsEnabled) { _, on in
+                        if on { HapticManager.shared.success() }
+                    }
+                    Toggle(isOn: $soundEnabled) {
+                        Label("Sound effects", systemImage: "speaker.wave.2")
+                    }
+                    .onChange(of: soundEnabled) { _, on in
+                        if on { SoundManager.shared.previewWaiting() }
+                    }
+                } header: {
+                    Text("Feedback")
+                } footer: {
+                    Text("Haptics buzz when a session changes state (e.g. waiting for permission, task done). Sounds layer a brief system tone on top of the haptic — silenced by your ringer switch.")
                 }
 
                 Section("About") {
