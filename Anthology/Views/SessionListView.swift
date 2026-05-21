@@ -29,7 +29,10 @@ struct SessionListView: View {
     private var tab: Binding<SessionsTab> {
         Binding(
             get: { SessionsTab(rawValue: tabRaw) ?? .list },
-            set: { tabRaw = $0.rawValue }
+            set: {
+                if tabRaw != $0.rawValue { HapticManager.shared.selection() }
+                tabRaw = $0.rawValue
+            }
         )
     }
 
