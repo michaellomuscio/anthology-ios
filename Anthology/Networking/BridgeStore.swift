@@ -55,6 +55,30 @@ final class BridgeStore: ObservableObject {
         await refreshAll()
     }
 
+    /// Called when the app returns to the foreground (or the user taps a
+    /// reconnect button). If we already have a paired server, force the live
+    /// client to refresh its socket; if we lost the client (cold launch after
+    /// iOS killed us), recreate it from stored credentials.
+    func reconnectIfNeeded() async {
+        // No server paired — nothing to reconnect to.
+        guard let s = server ?? ServerStore.list().sorted(by: { $0.pairedAt > $1.pairedAt }).first else {
+            return
+        }
+        if let c = client {
+            c.forceReconnect()
+            // Wait briefly so SwiftUI sees the .connected transition before any
+            // immediately-following refresh attempt runs against a half-up client.
+            await waitForConnection(timeout: 6)
+            if case .connected = connectionState {
+                await refreshAll()
+            }
+            return
+        }
+        // No live client — full bootstrap path. connect(to:) handles the
+        // KeychainStore lookup and the BridgeClient construction.
+        await connect(to: s)
+    }
+
     func disconnectAndForget() {
         client?.disconnect()
         client = nil

@@ -36,6 +36,7 @@ struct SessionListView: View {
     var body: some View {
         NavigationStack(path: $navPath) {
             VStack(spacing: 0) {
+                connectionBanner
                 tabPicker
                 Divider()
                 Group {
@@ -93,6 +94,54 @@ struct SessionListView: View {
                 store.pendingDeepLinkSessionId = nil
                 tabRaw = SessionsTab.list.rawValue
             }
+        }
+    }
+
+    @ViewBuilder
+    private var connectionBanner: some View {
+        if case .connected = store.connectionState {
+            // No banner when healthy.
+            EmptyView()
+        } else {
+            HStack(spacing: 10) {
+                Image(systemName: bannerIcon)
+                    .foregroundStyle(bannerTint)
+                    .imageScale(.small)
+                Text(store.connectionState.label)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Button {
+                    Task { await store.reconnectIfNeeded() }
+                } label: {
+                    Label("Reconnect", systemImage: "arrow.clockwise")
+                        .font(.caption.weight(.semibold))
+                        .labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.mini)
+                .tint(bannerTint)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(bannerTint.opacity(0.12))
+        }
+    }
+
+    private var bannerTint: Color {
+        switch store.connectionState {
+        case .connecting, .reconnecting: return .orange
+        case .failed: return .red
+        default: return .gray
+        }
+    }
+    private var bannerIcon: String {
+        switch store.connectionState {
+        case .connecting: return "antenna.radiowaves.left.and.right"
+        case .reconnecting: return "arrow.clockwise.circle"
+        case .failed: return "exclamationmark.triangle.fill"
+        default: return "wifi.slash"
         }
     }
 

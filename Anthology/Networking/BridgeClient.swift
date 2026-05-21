@@ -69,6 +69,31 @@ final class BridgeClient: @unchecked Sendable {
         }
     }
 
+    /// Tear down any stale socket and immediately reconnect. Used when the app
+    /// returns to the foreground after being suspended — iOS sometimes leaves
+    /// the URLSessionWebSocketTask in a half-dead state where receive() never
+    /// completes, so neither the existing error path nor the heartbeat ever
+    /// notices and the scheduleReconnect ladder never starts.
+    ///
+    /// Idempotent: a no-op if we're already cleanly connected and the heartbeat
+    /// is alive, so foregrounding while online doesn't churn the socket.
+    func forceReconnect() {
+        queue.async { [weak self] in
+            guard let self else { return }
+            guard !self.explicitlyDisconnected else { return }
+            // Already connected and healthy — let it be.
+            if self.connectionState == .connected && self.task != nil { return }
+            self.heartbeatTimer?.cancel()
+            self.heartbeatTimer = nil
+            self.task?.cancel(with: .goingAway, reason: nil)
+            self.task = nil
+            // Reset attempt counter so the backoff penalty from a stale ladder
+            // doesn't delay a foreground-triggered reconnect by up to 30s.
+            self.reconnectAttempt = 0
+            self.openSocket()
+        }
+    }
+
     private func openSocket() {
         guard !explicitlyDisconnected else { return }
         updateState(.connecting)
