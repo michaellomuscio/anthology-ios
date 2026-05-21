@@ -16,6 +16,14 @@ struct SessionDetailView: View {
             statusBar
             TerminalContainerView(sessionId: session.id)
                 .background(Color.black)
+                // iPhones with rounded screens (16 Pro, 15 Pro, etc.) clip the
+                // bottom-most terminal row on the curve. Claude Code's input
+                // prompt always sits on that last row, so an unpadded
+                // TerminalView visually eats the user's typing target. 10pt
+                // is enough to clear the curve on every current iPhone size
+                // and barely affects available rows.
+                .padding(.bottom, 10)
+                .background(Color.black)
         }
         .navigationTitle(session.name)
         .navigationBarTitleDisplayMode(.inline)
