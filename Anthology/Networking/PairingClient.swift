@@ -1,12 +1,24 @@
 import Foundation
 
 /// Pure HTTP /pair client. Does not touch storage — caller persists the result.
+///
+/// Scheme is picked from the port: 443 → https (Cloudflare Tunnel and friends
+/// terminate TLS at the edge, and iOS App Transport Security rejects bare
+/// http to a public hostname). Anything else → http (LAN/Tailscale where
+/// NSAllowsLocalNetworking lets us reach a plaintext bridge on RFC1918).
 enum PairingClient {
+    private static func scheme(for port: Int) -> String {
+        port == 443 ? "https" : "http"
+    }
+
     static func pair(host: String, port: Int, code: String, label: String) async throws -> PairingResponse {
         var comps = URLComponents()
-        comps.scheme = "http"
+        comps.scheme = scheme(for: port)
         comps.host = host
-        comps.port = port
+        // URLComponents emits :443 in the URL if you set it explicitly, which
+        // is technically valid but some intermediaries dislike. For the
+        // default-port case, leave port nil so the URL is clean.
+        comps.port = (port == 443 || port == 80) ? nil : port
         comps.path = "/pair"
         guard let url = comps.url else { throw URLError(.badURL) }
         var req = URLRequest(url: url, timeoutInterval: 10)
@@ -30,9 +42,9 @@ enum PairingClient {
 
     static func health(host: String, port: Int) async throws -> [String: Any] {
         var comps = URLComponents()
-        comps.scheme = "http"
+        comps.scheme = scheme(for: port)
         comps.host = host
-        comps.port = port
+        comps.port = (port == 443 || port == 80) ? nil : port
         comps.path = "/health"
         guard let url = comps.url else { throw URLError(.badURL) }
         let req = URLRequest(url: url, timeoutInterval: 4)
