@@ -322,6 +322,7 @@ enum BridgeEvent {
     case scheduleFired(id: String, ok: Bool, error: String?)
     case scheduleChanged(Schedule)
     case bye(reason: String)
+    case groupsChanged
     case unknown(type: String)
 
     init(message: InboundMessage) {
@@ -365,6 +366,8 @@ enum BridgeEvent {
             } else { self = .unknown(type: message.type) }
         case "bye":
             self = .bye(reason: message.string("reason") ?? "")
+        case "groups_changed":
+            self = .groupsChanged
         default:
             self = .unknown(type: message.type)
         }

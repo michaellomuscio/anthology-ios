@@ -14,9 +14,16 @@ struct SessionMeta: Codable, Identifiable, Hashable, Equatable {
     var alive: Bool
     var createdAt: Double?
     var spawnedBySchedule: String?
+    // v0.7+ fields — relayed by the Mac bridge. Older Macs omit these and the
+    // decoder treats them as nil.
+    var isPM: Bool
+    var agentTool: String?
+    var personaName: String?
+    var groupId: String?
 
     enum CodingKeys: String, CodingKey {
         case id, name, cwd, color, tag, pinned, status, alive, createdAt, spawnedBySchedule
+        case isPM, agentTool, personaName, groupId
     }
 
     init(from decoder: Decoder) throws {
@@ -32,14 +39,22 @@ struct SessionMeta: Codable, Identifiable, Hashable, Equatable {
         alive = (try? c.decode(Bool.self, forKey: .alive)) ?? false
         createdAt = try? c.decodeIfPresent(Double.self, forKey: .createdAt)
         spawnedBySchedule = try? c.decodeIfPresent(String.self, forKey: .spawnedBySchedule)
+        isPM = (try? c.decodeIfPresent(Bool.self, forKey: .isPM)) ?? false
+        agentTool = try? c.decodeIfPresent(String.self, forKey: .agentTool)
+        personaName = try? c.decodeIfPresent(String.self, forKey: .personaName)
+        groupId = try? c.decodeIfPresent(String.self, forKey: .groupId)
     }
 
     init(id: String, name: String, cwd: String, color: String = "#7B2FBE", tag: String? = nil,
          pinned: Bool = false, status: SessionStatus = .idle, alive: Bool = true,
-         createdAt: Double? = nil, spawnedBySchedule: String? = nil) {
+         createdAt: Double? = nil, spawnedBySchedule: String? = nil,
+         isPM: Bool = false, agentTool: String? = nil, personaName: String? = nil,
+         groupId: String? = nil) {
         self.id = id; self.name = name; self.cwd = cwd; self.color = color
         self.tag = tag; self.pinned = pinned; self.status = status; self.alive = alive
         self.createdAt = createdAt; self.spawnedBySchedule = spawnedBySchedule
+        self.isPM = isPM; self.agentTool = agentTool
+        self.personaName = personaName; self.groupId = groupId
     }
 
     func encode(to encoder: Encoder) throws {
@@ -54,6 +69,10 @@ struct SessionMeta: Codable, Identifiable, Hashable, Equatable {
         try c.encode(alive, forKey: .alive)
         try c.encodeIfPresent(createdAt, forKey: .createdAt)
         try c.encodeIfPresent(spawnedBySchedule, forKey: .spawnedBySchedule)
+        try c.encode(isPM, forKey: .isPM)
+        try c.encodeIfPresent(agentTool, forKey: .agentTool)
+        try c.encodeIfPresent(personaName, forKey: .personaName)
+        try c.encodeIfPresent(groupId, forKey: .groupId)
     }
 }
 
