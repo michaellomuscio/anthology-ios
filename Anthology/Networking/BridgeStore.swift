@@ -11,6 +11,8 @@ final class BridgeStore: ObservableObject {
     @Published var sessionData: [String: String] = [:]   // sessionId -> live cumulative buffer
     @Published var sessionStatus: [String: SessionStatus] = [:]
     @Published var schedules: [Schedule] = []
+    @Published var workers: [Worker] = []
+    @Published var groups: [SessionGroup] = []
     @Published var lastError: String?
     /// Set when a push notification is tapped or another deep-link source asks
     /// the UI to navigate to a specific session. SessionListView watches this
@@ -96,6 +98,44 @@ final class BridgeStore: ObservableObject {
     func refreshAll() async {
         await refreshSessions()
         await refreshSchedules()
+        await refreshWorkers()
+        await refreshGroups()
+    }
+
+    func refreshWorkers() async {
+        guard let c = client else { return }
+        do {
+            let ack = try await c.send(type: "list_workers", payload: [:])
+            if let result = ack.raw["result"]?.dictValue,
+               let arr = result["workers"] {
+                let data = try JSONEncoder().encode(arr)
+                self.workers = (try? JSONDecoder().decode([Worker].self, from: data)) ?? []
+            }
+        } catch { /* older Macs don't have list_workers — silent fallback */ }
+    }
+
+    func refreshGroups() async {
+        guard let c = client else { return }
+        do {
+            let ack = try await c.send(type: "list_groups", payload: [:])
+            if let result = ack.raw["result"]?.dictValue,
+               let arr = result["groups"] {
+                let data = try JSONEncoder().encode(arr)
+                self.groups = (try? JSONDecoder().decode([SessionGroup].self, from: data)) ?? []
+            }
+        } catch { /* older Macs don't have list_groups — silent fallback */ }
+    }
+
+    func setSessionGroup(sessionId: String, groupId: String?) async {
+        guard let c = client else { return }
+        var payload: [String: AnyCodable] = ["sessionId": .init(sessionId)]
+        if let g = groupId { payload["groupId"] = .init(g) }
+        do {
+            _ = try await c.send(type: "set_session_group", payload: payload)
+            // The server fans a session_meta event which our handler picks up.
+        } catch {
+            lastError = "set_session_group failed: \(error)"
+        }
     }
 
     func refreshSessions() async {
@@ -261,14 +301,31 @@ final class BridgeStore: ObservableObject {
         ])
     }
 
-    func spawn(name: String, cwd: String, runClaude: Bool = true) async -> SessionMeta? {
+    func spawn(
+        name: String,
+        cwd: String,
+        runClaude: Bool = true,
+        tag: String? = nil,
+        color: String? = nil,
+        pm: Bool = false,
+        agentTool: String? = nil,
+        personaName: String? = nil,
+        groupId: String? = nil
+    ) async -> SessionMeta? {
         guard let c = client else { return nil }
+        var payload: [String: AnyCodable] = [
+            "name": .init(name),
+            "cwd": .init(cwd),
+            "runClaude": .init(runClaude),
+            "pm": .init(pm),
+        ]
+        if let tag = tag, !tag.isEmpty { payload["tag"] = .init(tag) }
+        if let color = color, !color.isEmpty { payload["color"] = .init(color) }
+        if let agentTool = agentTool, !agentTool.isEmpty { payload["agentTool"] = .init(agentTool) }
+        if let personaName = personaName, !personaName.isEmpty { payload["personaName"] = .init(personaName) }
+        if let groupId = groupId, !groupId.isEmpty { payload["groupId"] = .init(groupId) }
         do {
-            let ack = try await c.send(type: "spawn", payload: [
-                "name": .init(name),
-                "cwd": .init(cwd),
-                "runClaude": .init(runClaude),
-            ])
+            let ack = try await c.send(type: "spawn", payload: payload)
             if let result = ack.raw["result"]?.dictValue,
                let s = result["session"] {
                 let data = try JSONEncoder().encode(s)
@@ -362,6 +419,8 @@ final class BridgeStore: ObservableObject {
             }
         case .bye(let reason):
             lastError = "Server: \(reason)"
+        case .groupsChanged:
+            Task { await self.refreshGroups() }
         case .unknown:
             break
         }

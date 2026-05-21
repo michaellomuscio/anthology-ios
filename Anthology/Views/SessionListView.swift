@@ -25,6 +25,10 @@ struct SessionListView: View {
     @State private var showingSettings = false
     @State private var showingSpawn = false
     @State private var navPath: [SessionMeta] = []
+    /// Current group filter. Empty = All. "_ungrouped" = sessions without a groupId.
+    /// "_pinned" = pinned filter. Otherwise a real groupId.
+    @State private var groupFilter: String = ""
+    @State private var killTarget: SessionMeta? = nil
 
     private var tab: Binding<SessionsTab> {
         Binding(
@@ -187,22 +191,159 @@ struct SessionListView: View {
         }
     }
 
+    private var filteredSessions: [SessionMeta] {
+        switch groupFilter {
+        case "":
+            return store.sessions
+        case "_pinned":
+            return store.sessions.filter { $0.pinned }
+        case "_ungrouped":
+            let validGroupIds = Set(store.groups.map { $0.id })
+            return store.sessions.filter {
+                ($0.groupId == nil) || !($0.groupId.flatMap { validGroupIds.contains($0) } ?? false)
+            }
+        default:
+            return store.sessions.filter { $0.groupId == groupFilter }
+        }
+    }
+
+    @ViewBuilder
+    private var groupFilterChips: some View {
+        if !store.groups.isEmpty || store.sessions.contains(where: { $0.pinned }) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    filterChip(id: "", label: "All", count: store.sessions.count)
+                    if store.sessions.contains(where: { $0.pinned }) {
+                        filterChip(id: "_pinned", label: "Pinned",
+                                   count: store.sessions.filter { $0.pinned }.count)
+                    }
+                    ForEach(store.groups) { g in
+                        let n = store.sessions.filter { $0.groupId == g.id }.count
+                        filterChip(id: g.id, label: g.name, count: n)
+                    }
+                    if store.sessions.contains(where: { $0.groupId == nil }) {
+                        let n = store.sessions.filter { $0.groupId == nil }.count
+                        filterChip(id: "_ungrouped", label: "Ungrouped", count: n)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+            }
+        }
+    }
+
+    private func filterChip(id: String, label: String, count: Int) -> some View {
+        let active = groupFilter == id
+        return Button {
+            HapticManager.shared.selection()
+            groupFilter = id
+        } label: {
+            HStack(spacing: 6) {
+                Text(label)
+                    .font(.caption.weight(active ? .semibold : .regular))
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(active ? Color.accentColor.opacity(0.22) : Color.gray.opacity(0.12), in: Capsule())
+            .overlay(Capsule().stroke(active ? Color.accentColor : Color.gray.opacity(0.4)))
+            .foregroundStyle(active ? Color.accentColor : .primary)
+        }
+        .buttonStyle(.plain)
+    }
+
     private var listBody: some View {
-        List {
-            if store.sessions.isEmpty {
-                Text("No sessions yet. Tap + to spawn one.")
-                    .foregroundStyle(.secondary)
-                    .font(.callout)
-            } else {
-                ForEach(store.sessions) { session in
-                    NavigationLink(value: session) {
-                        row(for: session)
+        VStack(spacing: 0) {
+            groupFilterChips
+            List {
+                let sessions = filteredSessions
+                if sessions.isEmpty {
+                    Text(store.sessions.isEmpty
+                         ? "No sessions yet. Tap + to spawn one."
+                         : "No sessions in this group.")
+                        .foregroundStyle(.secondary)
+                        .font(.callout)
+                } else {
+                    ForEach(sessions) { session in
+                        NavigationLink(value: session) {
+                            row(for: session)
+                        }
+                        .contextMenu {
+                            sessionContextMenu(for: session)
+                        }
                     }
                 }
             }
+            .listStyle(.insetGrouped)
+            .refreshable { await store.refreshSessions() }
         }
-        .listStyle(.insetGrouped)
-        .refreshable { await store.refreshSessions() }
+        .alert("Kill session?",
+               isPresented: Binding(get: { killTarget != nil }, set: { if !$0 { killTarget = nil } })) {
+            Button("Kill", role: .destructive) {
+                if let t = killTarget {
+                    HapticManager.shared.heavy()
+                    Task { await store.kill(sessionId: t.id) }
+                }
+                killTarget = nil
+            }
+            Button("Cancel", role: .cancel) { killTarget = nil }
+        } message: {
+            if let t = killTarget {
+                Text("Terminates Claude for \"\(t.name)\". The session row stays in the list with a dead status until you restart it from the Mac.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sessionContextMenu(for session: SessionMeta) -> some View {
+        // Open is the implicit tap action — surface it in the menu for discovery.
+        Button {
+            HapticManager.shared.light()
+            navPath = [session]
+        } label: {
+            Label("Open", systemImage: "arrow.up.right.square")
+        }
+
+        if !store.groups.isEmpty {
+            Menu {
+                Button {
+                    Task {
+                        HapticManager.shared.selection()
+                        await store.setSessionGroup(sessionId: session.id, groupId: nil)
+                    }
+                } label: {
+                    Label("Ungrouped", systemImage: session.groupId == nil ? "checkmark" : "")
+                }
+                ForEach(store.groups) { g in
+                    Button {
+                        Task {
+                            HapticManager.shared.selection()
+                            await store.setSessionGroup(sessionId: session.id, groupId: g.id)
+                        }
+                    } label: {
+                        if session.groupId == g.id {
+                            Label(g.name, systemImage: "checkmark")
+                        } else {
+                            Text(g.name)
+                        }
+                    }
+                }
+            } label: {
+                Label("Move to folder", systemImage: "folder")
+            }
+        }
+
+        Divider()
+
+        Button(role: .destructive) {
+            killTarget = session
+        } label: {
+            Label("Kill session", systemImage: "stop.circle")
+        }
     }
 
     private func row(for session: SessionMeta) -> some View {
